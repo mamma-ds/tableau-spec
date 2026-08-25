@@ -78,7 +78,7 @@ python -m pytest tests/ -v
 python -m pytest tests/ --cov=tableau_spec --cov-report=term-missing
 ```
 
-`sample/` 配下の実際の `.twbx` ファイルを使った結合テストも含まれています。
+`sample/` 配下に実際の `.twbx` ファイルを配置すると、それを使った結合テスト（`tests/test_integration.py`）も実行されます。サンプルファイルは実データを含むためリポジトリには含めていません。各自 `.twb` / `.twbx` ファイルを `sample/` に置いてください（未配置の場合、結合テストはスキップされます）。
 
 ## 現在の既知の制限
 

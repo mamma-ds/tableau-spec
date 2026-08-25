@@ -23,11 +23,14 @@ def test_pipeline_on_real_sample_twbx(twbx_path):
 
 
 def test_sample_directory_has_files():
-    assert _SAMPLE_FILES, "sample/ 配下に .twbx ファイルが見つかりません"
+    if not _SAMPLE_FILES:
+        pytest.skip("sample/ 配下に .twbx ファイルがありません（各自ローカルに配置してください）")
 
 
 def test_datasource_name_uses_caption_not_internal_id():
-    twbx_path = next(p for p in _SAMPLE_FILES if "勤怠" in p.name)
+    twbx_path = next((p for p in _SAMPLE_FILES if "勤怠" in p.name), None)
+    if twbx_path is None:
+        pytest.skip("sample/ に勤怠管理系の .twbx がありません")
 
     spec = analyze(parse(twbx_path))
 
@@ -37,7 +40,9 @@ def test_datasource_name_uses_caption_not_internal_id():
 
 
 def test_calculated_field_formula_resolves_internal_reference():
-    twbx_path = next(p for p in _SAMPLE_FILES if "基本パターン" in p.name)
+    twbx_path = next((p for p in _SAMPLE_FILES if "基本パターン" in p.name), None)
+    if twbx_path is None:
+        pytest.skip("sample/ に基本パターン系の .twbx がありません")
 
     spec = analyze(parse(twbx_path))
 

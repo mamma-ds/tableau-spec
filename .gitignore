@@ -12,5 +12,9 @@ output/
 ~*.twb
 ~*.twbx
 
+# サンプルワークブック（実データのため非公開・各自ローカルに配置する）
+sample/*.twb
+sample/*.twbx
+
 # エディタ・ローカル設定
 .claude/settings.local.json
