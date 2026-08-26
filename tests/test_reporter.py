@@ -285,7 +285,7 @@ def test_render_dependency_tree_shows_formula_as_tooltip_on_calc_field():
 
     html_text = render(spec, "sample.twb")
 
-    assert "title='SUM([予算])-SUM([実績])'" in html_text
+    assert "data-formula='SUM([予算])-SUM([実績])'" in html_text
 
 
 def test_render_dependency_tree_includes_legend():

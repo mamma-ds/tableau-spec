@@ -81,7 +81,30 @@ ul.dep-tree, ul.dep-tree ul {
   margin-right: 0.35rem;
   background: currentColor;
 }
-.dep-label[title] { cursor: help; border-bottom: 1px dotted currentColor; }
+.dep-label[data-formula] {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted currentColor;
+}
+.dep-label[data-formula]:hover::after {
+  content: attr(data-formula);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 0.4rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  white-space: pre-wrap;
+  width: max-content;
+  max-width: min(24rem, 80vw);
+  font-size: 0.85rem;
+  font-style: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
 .dep-shelf { color: var(--fg); opacity: 0.65; font-size: 0.8rem; margin-left: 0.3rem; }
 mark {
   background: var(--accent-param);
@@ -528,11 +551,11 @@ def _calc_field_li_html(
     calc: CalculatedField, children_html: str, highlight: bool = False, shelf_html: str = ""
 ) -> str:
     badge = "<span class='badge-lod'>LOD</span>" if calc.is_lod else ""
-    title = html.escape(calc.formula)
+    formula = html.escape(calc.formula)
     caption_html = html.escape(calc.caption)
     if highlight:
         caption_html = f"<mark>{caption_html}</mark>"
-    label = f"<span class='dep-label' title='{title}'>{caption_html}</span>"
+    label = f"<span class='dep-label' data-formula='{formula}'>{caption_html}</span>"
     return f"<li class='dep-calc'>{label}{badge}{shelf_html}{children_html}</li>"
 
 
