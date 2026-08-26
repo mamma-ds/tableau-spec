@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tableau-spec"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tableau の .twb / .twbx ファイルを解析して HTML 仕様書を生成する CLI ツール"
 requires-python = ">=3.9"
 
