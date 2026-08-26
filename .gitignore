@@ -22,3 +22,6 @@ sample/*.twbx
 # PyInstallerのビルド生成物（build_exe.pyで再生成できる）
 build/
 dist/
+
+# オフラインインストール用wheel一式（GitHub Releasesで配布）
+wheelhouse/
