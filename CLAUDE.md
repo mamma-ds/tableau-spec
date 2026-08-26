@@ -17,6 +17,9 @@ Tableau の .twb / .twbx ファイルを解析して HTML 仕様書を生成す�
 
 webapp.py は parser/analyzer/reporter をそのまま呼び出すだけで、XML解析やHTML生成のロジックは持たない。
 
+tableau_spec/desktop_launcher.py はPyInstallerでexe化する際の起動エントリポイントのみを担当する
+（`streamlit run` を内部的に呼び出すラッパー）。ビジネスロジックは持たない。
+
 ## 開発ルール
 - 各モジュールの責務を超えた実装をしない
   - parser.py にビジネスロジックを書かない
@@ -38,6 +41,9 @@ tableau-spec sample.twb -o output.html --open
 
 # Web UI起動（要: pip install -e .[web]）
 tableau-spec-web
+
+# exe化（要: pip install -e .[build]）
+pyinstaller TableauSpecWeb.spec --noconfirm
 \```
 
 ## 現在の既知の制限

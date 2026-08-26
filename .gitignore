@@ -18,3 +18,7 @@ sample/*.twbx
 
 # エディタ・ローカル設定
 .claude/settings.local.json
+
+# PyInstallerのビルド生成物（build_exe.pyで再生成できる）
+build/
+dist/
