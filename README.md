@@ -57,16 +57,17 @@ tableau-spec-web
 ### exe化（インストール不要で配布する）
 
 社内プロキシなどで `pip install` ができない環境向けに、Web UIをexe化して配布できます。
-ビルドはインターネットに接続できる環境（このリポジトリのクローン元など）で行い、
-生成された `dist/TableauSpecWeb` フォルダごと配布先にコピーしてください。
+
+**ビルド済みexeをダウンロードする場合**：[Releases](../../releases) から `TableauSpecWeb-win64.zip` をダウンロードして展開し、`TableauSpecWeb.exe` を実行してください。コンソール画面とともにブラウザが自動で開きます（開かない場合は `http://localhost:8501` に手動でアクセス）。終了する場合はコンソール画面を閉じてください。
+
+**自分でビルドする場合**：ビルドはインターネットに接続できる環境で行ってください。
 
 ```bash
 pip install -e ".[build]"
 pyinstaller TableauSpecWeb.spec --noconfirm
 ```
 
-`dist/TableauSpecWeb/TableauSpecWeb.exe` を実行すると、コンソール画面とともにブラウザが自動で開きます。
-コンソール画面を閉じるとサーバーが停止します。フォルダごとzip圧縮すればUSBメモリや社内ファイル共有で配布できます。
+`dist/TableauSpecWeb` フォルダが生成されます。フォルダごとzip圧縮すればUSBメモリや社内ファイル共有で配布できます（ビルド生成物のためgit管理には含めていません）。
 
 初回ビルドはStreamlit一式を同梱するため、フォルダサイズは200MB超になります。
 
