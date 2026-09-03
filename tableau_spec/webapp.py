@@ -86,7 +86,8 @@ def _run_app() -> None:
         uploaded = st.file_uploader(".twb / .twbx をドラッグ＆ドロップ", type=["twb", "twbx"])
 
         selected_key = MENU[0][0]
-        dependency_search = ""
+        dependency_sheet_search = ""
+        dependency_field_search = ""
         fields_search = ""
         if uploaded is not None:
             selected_key = st.radio(
@@ -95,13 +96,15 @@ def _run_app() -> None:
                 format_func=dict(MENU).get,
             )
             if selected_key == "dependency_tree":
-                dependency_search = st.text_input(
-                    "検索（シート／フィールド／計算フィールド／パラメータ名）",
-                    placeholder="例: 利益率",
+                dependency_sheet_search = st.text_input(
+                    "シート名で検索", placeholder="例: 売上シート"
+                )
+                dependency_field_search = st.text_input(
+                    "フィールド／計算フィールド／パラメータ名で検索", placeholder="例: 利益率"
                 )
             elif selected_key == "calculated_parameters":
                 fields_search = st.text_input(
-                    "検索（フィールド／計算フィールド／パラメータ／セット名）",
+                    "検索（フィールド／計算フィールド／パラメータ／セット名・計算式）",
                     placeholder="例: 利益率",
                 )
 
@@ -122,7 +125,9 @@ def _run_app() -> None:
         mime="text/html",
     )
 
-    fragment = render_groups(spec, uploaded.name, dependency_search, fields_search)[selected_key]
+    fragment = render_groups(
+        spec, uploaded.name, dependency_sheet_search, dependency_field_search, fields_search
+    )[selected_key]
     page = (
         "<!DOCTYPE html><html><head><meta charset='utf-8' />"
         f"{embed_style()}</head>"

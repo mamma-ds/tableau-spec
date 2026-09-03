@@ -249,6 +249,76 @@ def test_fields_search_no_match_shows_messages():
     assert "検索条件に一致するパラメーターがありません。" in fragment
 
 
+def test_fields_search_matches_calculated_field_formula_content():
+    spec = WorkbookSpec(
+        calculated_fields=[
+            CalculatedField(
+                name="[c1]", caption="達成率", formula="SUM([売上])/SUM([予算])", is_lod=False, datasource="ds1"
+            ),
+            CalculatedField(name="[c2]", caption="件数", formula="COUNT([氏名])", is_lod=False, datasource="ds1"),
+        ],
+    )
+
+    fragment = render_groups(spec, "sample.twb", fields_search="予算")["calculated_parameters"]
+
+    assert "達成率" in fragment
+    assert "<mark>予算</mark>" in fragment
+    assert "件数" not in fragment
+
+
+def test_render_dependency_tree_sheet_search_shows_full_subtree_unfiltered():
+    spec = WorkbookSpec(
+        calculated_fields=[
+            CalculatedField(name="[c1]", caption="利益率", formula="1", is_lod=False, datasource="ds1")
+        ],
+        sheets=[
+            Sheet(name="売上シート", used_calculated_fields=["利益率"], used_fields=["地域"]),
+            Sheet(name="人事シート", used_fields=["氏名"]),
+        ],
+    )
+
+    groups = render_groups(spec, "sample.twb", dependency_sheet_search="売上")
+
+    tree = groups["dependency_tree"]
+    assert "<mark>売上シート</mark>" in tree
+    assert "人事シート" not in tree
+    # シート名検索のみの場合、配下のフィールドは絞り込まれず全件表示される
+    assert "利益率" in tree
+    assert "地域" in tree
+
+
+def test_render_dependency_tree_sheet_and_field_search_combine():
+    spec = WorkbookSpec(
+        calculated_fields=[
+            CalculatedField(name="[c1]", caption="利益率", formula="1", is_lod=False, datasource="ds1")
+        ],
+        sheets=[
+            Sheet(name="売上シート", used_calculated_fields=["利益率"], used_fields=["地域"]),
+        ],
+    )
+
+    groups = render_groups(spec, "sample.twb", dependency_sheet_search="売上", dependency_field_search="地域")
+
+    tree = groups["dependency_tree"]
+    assert "class='dep-field'>" in tree
+    assert "<mark>地域</mark>" in tree
+    # フィールド名検索にも一致させたため、一致しない利益率は表示されない
+    assert "利益率" not in tree
+
+
+def test_render_dependency_tree_sheet_search_hides_orphan_section():
+    spec = WorkbookSpec(
+        calculated_fields=[
+            CalculatedField(name="[c1]", caption="未使用計算", formula="1", is_lod=False, datasource="ds1")
+        ],
+        sheets=[Sheet(name="シート1")],
+    )
+
+    groups = render_groups(spec, "sample.twb", dependency_sheet_search="シート1")
+
+    assert "どのシートにも使用されていない計算フィールド" not in groups["dependency_tree"]
+
+
 def test_render_dependency_tree_nests_calc_field_dependencies():
     spec = WorkbookSpec(
         calculated_fields=[
@@ -416,7 +486,7 @@ def test_dependency_tree_search_excludes_unrelated_sheets():
         ],
     )
 
-    groups = render_groups(spec, "sample.twb", dependency_search="利益率")
+    groups = render_groups(spec, "sample.twb", dependency_field_search="利益率")
 
     tree = groups["dependency_tree"]
     assert "売上シート" in tree
@@ -439,7 +509,7 @@ def test_dependency_tree_search_keeps_sheet_when_descendant_calc_field_matches()
         sheets=[Sheet(name="シート1", used_calculated_fields=["予実差"])],
     )
 
-    groups = render_groups(spec, "sample.twb", dependency_search="予算")
+    groups = render_groups(spec, "sample.twb", dependency_field_search="予算")
 
     tree = groups["dependency_tree"]
     assert "シート1" in tree
@@ -451,7 +521,7 @@ def test_dependency_tree_search_keeps_sheet_when_descendant_calc_field_matches()
 def test_dependency_tree_search_no_match_shows_message():
     spec = WorkbookSpec(sheets=[Sheet(name="シート1", used_fields=["地域"])])
 
-    groups = render_groups(spec, "sample.twb", dependency_search="存在しない名前")
+    groups = render_groups(spec, "sample.twb", dependency_field_search="存在しない名前")
 
     assert "検索条件に一致するシート・フィールドがありません。" in groups["dependency_tree"]
 
@@ -465,7 +535,7 @@ def test_dependency_tree_search_filters_orphan_calculated_fields():
         sheets=[Sheet(name="シート1")],
     )
 
-    groups = render_groups(spec, "sample.twb", dependency_search="未使用A")
+    groups = render_groups(spec, "sample.twb", dependency_field_search="未使用A")
 
     tree = groups["dependency_tree"]
     assert "未使用A" in tree

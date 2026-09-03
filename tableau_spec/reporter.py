@@ -161,13 +161,14 @@ def _color_swatch(color: str) -> str:
 _TAB_SEARCH_INPUTS = {
     "calculated_parameters": (
         "<input type='search' class='tw-search' "
-        "placeholder='検索（フィールド／計算フィールド／パラメータ／セット名）' "
+        "placeholder='検索（フィールド／計算フィールド／パラメータ／セット名・計算式）' "
         "oninput=\"twFilterFieldTables(this.value)\" />"
     ),
     "dependency_tree": (
-        "<input type='search' class='tw-search' "
-        "placeholder='検索（シート／フィールド／計算フィールド／パラメータ名）' "
-        "oninput=\"twFilterTree(this.value)\" />"
+        "<input type='search' id='tw-tree-sheet-search' class='tw-search' "
+        "placeholder='シート名で検索' oninput='twFilterTree()' />"
+        "<input type='search' id='tw-tree-field-search' class='tw-search' "
+        "placeholder='フィールド／計算フィールド／パラメータ名で検索' oninput='twFilterTree()' />"
     ),
 }
 
@@ -185,22 +186,53 @@ function twFilterFieldTables(query) {
   var panel = document.getElementById('tw-panel-calculated_parameters');
   if (!panel) { return; }
   panel.querySelectorAll('table').forEach(function (table) {
+    var hasFormulaColumn = !!table.querySelector('td pre');
     table.querySelectorAll('tr').forEach(function (tr, i) {
       if (i === 0) { return; }
-      var cell = tr.cells[0];
-      var text = cell ? cell.textContent.toLowerCase() : '';
-      tr.style.display = (q === '' || text.indexOf(q) !== -1) ? '' : 'none';
+      var nameText = tr.cells[0] ? tr.cells[0].textContent.toLowerCase() : '';
+      var formulaText = hasFormulaColumn && tr.cells[1] ? tr.cells[1].textContent.toLowerCase() : '';
+      var match = q === '' || nameText.indexOf(q) !== -1 || formulaText.indexOf(q) !== -1;
+      tr.style.display = match ? '' : 'none';
     });
   });
 }
-function twFilterTree(query) {
-  var q = query.trim().toLowerCase();
+function twFilterTree() {
+  var sheetInput = document.getElementById('tw-tree-sheet-search');
+  var fieldInput = document.getElementById('tw-tree-field-search');
+  var sq = sheetInput ? sheetInput.value.trim().toLowerCase() : '';
+  var fq = fieldInput ? fieldInput.value.trim().toLowerCase() : '';
   var panel = document.getElementById('tw-panel-dependency_tree');
   if (!panel) { return; }
-  panel.querySelectorAll('ul.dep-tree > li').forEach(function (li) {
-    var text = li.textContent.toLowerCase();
-    li.style.display = (q === '' || text.indexOf(q) !== -1) ? '' : 'none';
-  });
+  var sections = panel.querySelectorAll('section');
+  var mainTree = sections[0] ? sections[0].querySelector('ul.dep-tree') : null;
+  if (mainTree) {
+    mainTree.querySelectorAll(':scope > li.dep-sheet').forEach(function (sheetLi) {
+      var nameNode = sheetLi.childNodes[0];
+      var sheetName = nameNode ? nameNode.textContent.toLowerCase() : '';
+      if (sq !== '' && sheetName.indexOf(sq) === -1) {
+        sheetLi.style.display = 'none';
+        return;
+      }
+      var anyFieldMatch = fq === '';
+      sheetLi.querySelectorAll('li').forEach(function (nodeLi) {
+        var match = fq === '' || nodeLi.textContent.toLowerCase().indexOf(fq) !== -1;
+        nodeLi.style.display = match ? '' : 'none';
+        if (match) { anyFieldMatch = true; }
+      });
+      sheetLi.style.display = anyFieldMatch ? '' : 'none';
+    });
+  }
+  if (sections[1]) {
+    if (sq !== '') {
+      sections[1].style.display = 'none';
+    } else {
+      sections[1].style.display = '';
+      sections[1].querySelectorAll('ul.dep-tree > li').forEach(function (li) {
+        var match = fq === '' || li.textContent.toLowerCase().indexOf(fq) !== -1;
+        li.style.display = match ? '' : 'none';
+      });
+    }
+  }
 }
 """
 
@@ -235,12 +267,14 @@ def render(spec: WorkbookSpec, source_name: str) -> str:
 def render_groups(
     spec: WorkbookSpec,
     source_name: str,
-    dependency_search: str = "",
+    dependency_sheet_search: str = "",
+    dependency_field_search: str = "",
     fields_search: str = "",
 ) -> dict[str, str]:
     """メニュー切り替え表示用に、意味のあるまとまりごとの HTML フラグメントを返す。
-    dependency_search を指定すると、依存関係ツリーをシート／フィールド／計算フィールド／
-    パラメータ名で絞り込む。fields_search を指定すると、フィールド一覧／計算フィールド／
+    dependency_sheet_search / dependency_field_search を指定すると、依存関係ツリーを
+    それぞれシート名／フィールド・計算フィールド・パラメータ名で独立に絞り込む。
+    fields_search を指定すると、フィールド一覧／計算フィールド（名前・計算式）／
     パラメーター／セットの各表をフィールド名で絞り込む。"""
     return {
         "overview_datasources": (
@@ -254,7 +288,9 @@ def render_groups(
             + _render_unused_fields(spec, fields_search)
         ),
         "sheets_dashboards": _render_dashboards(spec) + _render_sheets(spec),
-        "dependency_tree": _render_dependency_tree(spec, dependency_search),
+        "dependency_tree": _render_dependency_tree(
+            spec, dependency_sheet_search, dependency_field_search
+        ),
     }
 
 
@@ -344,6 +380,26 @@ def _highlight_if_match(name: str, normalized_query: str) -> str:
     return f"<mark>{escaped}</mark>" if _node_matches(name, normalized_query) else escaped
 
 
+def _highlight_substring(text: str, normalized_query: str) -> str:
+    """text 内で normalized_query に一致する箇所（複数可）だけを <mark> で囲む。
+    長文（計算式など）で一致箇所のみを分かりやすく示すために使う。"""
+    if not normalized_query:
+        return html.escape(text)
+    lower = text.casefold()
+    idx = lower.find(normalized_query)
+    if idx == -1:
+        return html.escape(text)
+    parts = []
+    start = 0
+    while idx != -1:
+        parts.append(html.escape(text[start:idx]))
+        parts.append(f"<mark>{html.escape(text[idx:idx + len(normalized_query)])}</mark>")
+        start = idx + len(normalized_query)
+        idx = lower.find(normalized_query, start)
+    parts.append(html.escape(text[start:]))
+    return "".join(parts)
+
+
 def _render_fields(spec: WorkbookSpec, search: str = "") -> str:
     normalized_query = search.strip().casefold()
     usage = _build_field_usage_map(spec)
@@ -368,7 +424,11 @@ def _render_calculated_fields(spec: WorkbookSpec, search: str = "") -> str:
     usage = _build_field_usage_map(spec)
     calc_fields = spec.calculated_fields
     if normalized_query:
-        calc_fields = [f for f in calc_fields if _node_matches(f.caption, normalized_query)]
+        calc_fields = [
+            f
+            for f in calc_fields
+            if _node_matches(f.caption, normalized_query) or _node_matches(f.formula, normalized_query)
+        ]
     rows = []
     for f in calc_fields:
         badge = "<span class='badge-lod'>LOD</span>" if f.is_lod else ""
@@ -376,7 +436,7 @@ def _render_calculated_fields(spec: WorkbookSpec, search: str = "") -> str:
         rows.append(
             "<tr>"
             f"<td>{_highlight_if_match(f.caption, normalized_query)}{badge}</td>"
-            f"<td><pre>{html.escape(f.formula)}</pre></td>"
+            f"<td><pre>{_highlight_substring(f.formula, normalized_query)}</pre></td>"
             f"<td>{html.escape(f.datasource)}</td>"
             f"<td>{used_sheets}</td>"
             "</tr>"
@@ -640,49 +700,63 @@ def _collect_formula_descendants(
     return descendants
 
 
-def _render_dependency_tree(spec: WorkbookSpec, search: str = "") -> str:
-    normalized_query = search.strip().casefold()
+def _render_dependency_tree(
+    spec: WorkbookSpec, sheet_search: str = "", field_search: str = ""
+) -> str:
+    """依存関係ツリーを、シート名(sheet_search)とフィールド／計算フィールド／パラメータ名
+    (field_search) の2つの独立した条件で絞り込む。"""
+    normalized_sheet_query = sheet_search.strip().casefold()
+    normalized_field_query = field_search.strip().casefold()
     calc_by_caption = {f.caption: f for f in spec.calculated_fields}
     param_captions = {p.caption for p in spec.parameters}
 
     sheet_items = []
     for s in spec.sheets:
-        self_match = _node_matches(s.name, normalized_query)
-        child_query = "" if self_match else normalized_query
+        sheet_self_match = _node_matches(s.name, normalized_sheet_query)
+        if normalized_sheet_query and not sheet_self_match:
+            continue
         captions = list(s.used_calculated_fields) + list(s.used_fields)
         formula_descendants = _collect_formula_descendants(captions, calc_by_caption, frozenset())
         captions = [
             c for c in captions if not (c in formula_descendants and not s.field_shelves.get(c))
         ]
         children, child_match = _dependency_children_html(
-            captions, calc_by_caption, param_captions, frozenset(), child_query, shelves=s.field_shelves
+            captions,
+            calc_by_caption,
+            param_captions,
+            frozenset(),
+            normalized_field_query,
+            shelves=s.field_shelves,
         )
-        if normalized_query and not (self_match or child_match):
+        if normalized_field_query and not child_match:
             continue
         children_html = f"<ul>{children}</ul>" if children else ""
-        name_html = f"<mark>{html.escape(s.name)}</mark>" if self_match else html.escape(s.name)
+        name_html = (
+            f"<mark>{html.escape(s.name)}</mark>" if sheet_self_match and normalized_sheet_query else html.escape(s.name)
+        )
         sheet_items.append(f"<li class='dep-sheet'>{name_html}{children_html}</li>")
 
     if sheet_items:
         tree_html = f"<ul class='dep-tree'>{''.join(sheet_items)}</ul>"
-    elif normalized_query:
+    elif normalized_sheet_query or normalized_field_query:
         tree_html = "<p>検索条件に一致するシート・フィールドがありません。</p>"
     else:
         tree_html = "<p>シートがないため依存関係を表示できません。</p>"
 
-    used_calc_captions = {c for s in spec.sheets for c in s.used_calculated_fields}
-    orphan_calcs = [f for f in spec.calculated_fields if f.caption not in used_calc_captions]
-    if normalized_query:
-        orphan_calcs = [f for f in orphan_calcs if _node_matches(f.caption, normalized_query)]
     orphan_html = ""
-    if orphan_calcs:
-        orphan_items = "".join(
-            _calc_field_li_html(f, "", highlight=bool(normalized_query)) for f in orphan_calcs
-        )
-        orphan_html = (
-            "<h2>どのシートにも使用されていない計算フィールド</h2>"
-            f"<ul class='dep-tree'>{orphan_items}</ul>"
-        )
+    if not normalized_sheet_query:
+        used_calc_captions = {c for s in spec.sheets for c in s.used_calculated_fields}
+        orphan_calcs = [f for f in spec.calculated_fields if f.caption not in used_calc_captions]
+        if normalized_field_query:
+            orphan_calcs = [f for f in orphan_calcs if _node_matches(f.caption, normalized_field_query)]
+        if orphan_calcs:
+            orphan_items = "".join(
+                _calc_field_li_html(f, "", highlight=bool(normalized_field_query)) for f in orphan_calcs
+            )
+            orphan_html = (
+                "<h2>どのシートにも使用されていない計算フィールド</h2>"
+                f"<ul class='dep-tree'>{orphan_items}</ul>"
+            )
 
     return (
         f"<section>\n<h2>依存関係ツリー（シート起点）</h2>\n{_DEP_LEGEND}\n{tree_html}\n</section>"
