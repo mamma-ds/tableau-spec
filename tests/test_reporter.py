@@ -141,6 +141,27 @@ def test_sheet_table_includes_used_fields_and_calculated_fields():
     assert "利益率" in html_text
 
 
+def test_sheet_table_annotates_used_fields_with_shelves():
+    spec = WorkbookSpec(
+        sheets=[
+            Sheet(
+                name="シート1",
+                used_fields=["地域", "売上"],
+                used_calculated_fields=["利益率"],
+                field_shelves={"地域": ["行"], "利益率": ["色", "フィルター"]},
+            )
+        ],
+    )
+
+    html_text = render(spec, "sample.twb")
+
+    sheets_section = html_text.split("<h2>シート一覧</h2>")[1].split("</section>")[0]
+    assert "地域<span class='dep-shelf'>（行）</span>" in sheets_section
+    assert "利益率<span class='dep-shelf'>（色・フィルター）</span>" in sheets_section
+    # 棚情報のないフィールドは注記なしでそのまま表示される
+    assert "売上、" in sheets_section or "売上<" in sheets_section
+
+
 def test_sheet_and_dashboard_color_swatch_rendered():
     spec = WorkbookSpec(
         sheets=[Sheet(name="シート1", color="#ff0000")],

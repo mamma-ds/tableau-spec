@@ -552,9 +552,15 @@ def _render_sheets(spec: WorkbookSpec) -> str:
     rows = []
     for s in spec.sheets:
         filters = "、".join(html.escape(f.column) for f in s.filters) if s.filters else "-"
-        used_fields = "、".join(html.escape(f) for f in s.used_fields) if s.used_fields else "-"
+        used_fields = (
+            "、".join(f"{html.escape(f)}{_shelf_html(f, s.field_shelves)}" for f in s.used_fields)
+            if s.used_fields
+            else "-"
+        )
         used_calc_fields = (
-            "、".join(html.escape(f) for f in s.used_calculated_fields)
+            "、".join(
+                f"{html.escape(f)}{_shelf_html(f, s.field_shelves)}" for f in s.used_calculated_fields
+            )
             if s.used_calculated_fields
             else "-"
         )
