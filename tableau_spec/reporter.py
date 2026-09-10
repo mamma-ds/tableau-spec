@@ -181,55 +181,86 @@ function twShowTab(key) {
     b.classList.toggle('active', b.dataset.tab === key);
   });
 }
+function twHighlightText(el, query) {
+  if (!el) { return false; }
+  if (el.dataset.twOriginal === undefined) {
+    el.dataset.twOriginal = el.textContent;
+  }
+  var original = el.dataset.twOriginal;
+  if (!query) {
+    if (el.textContent !== original) { el.textContent = original; }
+    return false;
+  }
+  var lower = original.toLowerCase();
+  var q = query.toLowerCase();
+  var idx = lower.indexOf(q);
+  if (idx === -1) {
+    if (el.textContent !== original) { el.textContent = original; }
+    return false;
+  }
+  el.textContent = '';
+  var start = 0;
+  while (idx !== -1) {
+    el.appendChild(document.createTextNode(original.slice(start, idx)));
+    var mark = document.createElement('mark');
+    mark.textContent = original.slice(idx, idx + q.length);
+    el.appendChild(mark);
+    start = idx + q.length;
+    idx = lower.indexOf(q, start);
+  }
+  el.appendChild(document.createTextNode(original.slice(start)));
+  return true;
+}
 function twFilterFieldTables(query) {
-  var q = query.trim().toLowerCase();
+  var q = query.trim();
   var panel = document.getElementById('tw-panel-calculated_parameters');
   if (!panel) { return; }
   panel.querySelectorAll('table').forEach(function (table) {
-    var hasFormulaColumn = !!table.querySelector('td pre');
     table.querySelectorAll('tr').forEach(function (tr, i) {
       if (i === 0) { return; }
-      var nameText = tr.cells[0] ? tr.cells[0].textContent.toLowerCase() : '';
-      var formulaText = hasFormulaColumn && tr.cells[1] ? tr.cells[1].textContent.toLowerCase() : '';
-      var match = q === '' || nameText.indexOf(q) !== -1 || formulaText.indexOf(q) !== -1;
-      tr.style.display = match ? '' : 'none';
+      var nameEl = tr.querySelector('.tw-name');
+      var formulaEl = tr.querySelector('td pre');
+      var nameMatch = twHighlightText(nameEl, q);
+      var formulaMatch = formulaEl ? twHighlightText(formulaEl, q) : false;
+      tr.style.display = (q === '' || nameMatch || formulaMatch) ? '' : 'none';
     });
   });
 }
 function twFilterTree() {
   var sheetInput = document.getElementById('tw-tree-sheet-search');
   var fieldInput = document.getElementById('tw-tree-field-search');
-  var sq = sheetInput ? sheetInput.value.trim().toLowerCase() : '';
-  var fq = fieldInput ? fieldInput.value.trim().toLowerCase() : '';
+  var sq = sheetInput ? sheetInput.value.trim() : '';
+  var fq = fieldInput ? fieldInput.value.trim() : '';
   var panel = document.getElementById('tw-panel-dependency_tree');
   if (!panel) { return; }
   var sections = panel.querySelectorAll('section');
   var mainTree = sections[0] ? sections[0].querySelector('ul.dep-tree') : null;
   if (mainTree) {
     mainTree.querySelectorAll(':scope > li.dep-sheet').forEach(function (sheetLi) {
-      var nameNode = sheetLi.childNodes[0];
-      var sheetName = nameNode ? nameNode.textContent.toLowerCase() : '';
-      if (sq !== '' && sheetName.indexOf(sq) === -1) {
+      var sheetNameEl = sheetLi.querySelector(':scope > .tw-name');
+      var sheetMatch = twHighlightText(sheetNameEl, sq);
+      if (sq !== '' && !sheetMatch) {
         sheetLi.style.display = 'none';
         return;
       }
       var anyFieldMatch = fq === '';
       sheetLi.querySelectorAll('li').forEach(function (nodeLi) {
-        var match = fq === '' || nodeLi.textContent.toLowerCase().indexOf(fq) !== -1;
-        nodeLi.style.display = match ? '' : 'none';
-        if (match) { anyFieldMatch = true; }
+        var nameEl = nodeLi.querySelector(':scope > .tw-name');
+        var match = twHighlightText(nameEl, fq);
+        var visible = fq === '' || match;
+        nodeLi.style.display = visible ? '' : 'none';
+        if (visible) { anyFieldMatch = true; }
       });
       sheetLi.style.display = anyFieldMatch ? '' : 'none';
     });
   }
   if (sections[1]) {
-    if (sq !== '') {
-      sections[1].style.display = 'none';
-    } else {
-      sections[1].style.display = '';
+    sections[1].style.display = sq !== '' ? 'none' : '';
+    if (sq === '') {
       sections[1].querySelectorAll('ul.dep-tree > li').forEach(function (li) {
-        var match = fq === '' || li.textContent.toLowerCase().indexOf(fq) !== -1;
-        li.style.display = match ? '' : 'none';
+        var nameEl = li.querySelector(':scope > .tw-name');
+        var match = twHighlightText(nameEl, fq);
+        li.style.display = (fq === '' || match) ? '' : 'none';
       });
     }
   }
@@ -409,7 +440,10 @@ def _render_fields(spec: WorkbookSpec, search: str = "") -> str:
     rows = []
     for name in field_names:
         used_sheets = "、".join(html.escape(s) for s in usage.get(name, [])) or "-"
-        rows.append(f"<tr><td>{_highlight_if_match(name, normalized_query)}</td><td>{used_sheets}</td></tr>")
+        rows.append(
+            f"<tr><td><span class='tw-name'>{_highlight_if_match(name, normalized_query)}</span></td>"
+            f"<td>{used_sheets}</td></tr>"
+        )
     if rows:
         table_html = "<table><tr><th>フィールド名</th><th>使用シート</th></tr>" + "".join(rows) + "</table>"
     elif normalized_query:
@@ -435,7 +469,7 @@ def _render_calculated_fields(spec: WorkbookSpec, search: str = "") -> str:
         used_sheets = "、".join(html.escape(s) for s in usage.get(f.caption, [])) or "-"
         rows.append(
             "<tr>"
-            f"<td>{_highlight_if_match(f.caption, normalized_query)}{badge}</td>"
+            f"<td><span class='tw-name'>{_highlight_if_match(f.caption, normalized_query)}</span>{badge}</td>"
             f"<td><pre>{_highlight_substring(f.formula, normalized_query)}</pre></td>"
             f"<td>{html.escape(f.datasource)}</td>"
             f"<td>{used_sheets}</td>"
@@ -461,7 +495,7 @@ def _render_parameters(spec: WorkbookSpec, search: str = "") -> str:
         params = [p for p in params if _node_matches(p.caption, normalized_query)]
     rows = [
         "<tr>"
-        f"<td>{_highlight_if_match(p.caption, normalized_query)}</td>"
+        f"<td><span class='tw-name'>{_highlight_if_match(p.caption, normalized_query)}</span></td>"
         f"<td>{html.escape(p.datatype)}</td>"
         f"<td>{html.escape(p.current_value)}</td>"
         "</tr>"
@@ -485,7 +519,7 @@ def _render_sets(spec: WorkbookSpec, search: str = "") -> str:
         sets = [s for s in sets if _node_matches(s.name, normalized_query)]
     rows = [
         "<tr>"
-        f"<td>{_highlight_if_match(s.name, normalized_query)}</td>"
+        f"<td><span class='tw-name'>{_highlight_if_match(s.name, normalized_query)}</span></td>"
         f"<td>{html.escape(s.field)}</td>"
         f"<td>{html.escape(s.description)}</td>"
         f"<td>{html.escape(s.datasource)}</td>"
@@ -536,7 +570,8 @@ def _render_unused_fields(spec: WorkbookSpec, search: str = "") -> str:
     if normalized_query:
         unused = [(c, d) for c, d in unused if _node_matches(c, normalized_query)]
     rows = [
-        f"<tr><td>{_highlight_if_match(c, normalized_query)}</td><td>{html.escape(d)}</td></tr>"
+        f"<tr><td><span class='tw-name'>{_highlight_if_match(c, normalized_query)}</span></td>"
+        f"<td>{html.escape(d)}</td></tr>"
         for c, d in unused
     ]
     if rows:
@@ -621,7 +656,7 @@ def _calc_field_li_html(
     caption_html = html.escape(calc.caption)
     if highlight:
         caption_html = f"<mark>{caption_html}</mark>"
-    label = f"<span class='dep-label' data-formula='{formula}'>{caption_html}</span>"
+    label = f"<span class='dep-label tw-name' data-formula='{formula}'>{caption_html}</span>"
     return f"<li class='dep-calc'>{label}{badge}{shelf_html}{children_html}</li>"
 
 
@@ -677,14 +712,16 @@ def _dependency_children_html(
             if normalized_query and not self_match:
                 continue
             any_match = any_match or self_match
-            label = f"<mark>{html.escape(caption)}</mark>" if self_match else html.escape(caption)
+            caption_html = f"<mark>{html.escape(caption)}</mark>" if self_match else html.escape(caption)
+            label = f"<span class='tw-name'>{caption_html}</span>"
             items.append(f"<li class='dep-param'>{label}（パラメーター）{shelf_html}</li>")
         else:
             self_match = _node_matches(caption, normalized_query)
             if normalized_query and not self_match:
                 continue
             any_match = any_match or self_match
-            label = f"<mark>{html.escape(caption)}</mark>" if self_match else html.escape(caption)
+            caption_html = f"<mark>{html.escape(caption)}</mark>" if self_match else html.escape(caption)
+            label = f"<span class='tw-name'>{caption_html}</span>"
             items.append(f"<li class='dep-field'>{label}{shelf_html}</li>")
     return "".join(items), any_match
 
@@ -737,9 +774,10 @@ def _render_dependency_tree(
         if normalized_field_query and not child_match:
             continue
         children_html = f"<ul>{children}</ul>" if children else ""
-        name_html = (
+        sheet_caption_html = (
             f"<mark>{html.escape(s.name)}</mark>" if sheet_self_match and normalized_sheet_query else html.escape(s.name)
         )
+        name_html = f"<span class='tw-name'>{sheet_caption_html}</span>"
         sheet_items.append(f"<li class='dep-sheet'>{name_html}{children_html}</li>")
 
     if sheet_items:

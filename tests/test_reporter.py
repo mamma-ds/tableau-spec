@@ -358,10 +358,10 @@ def test_render_dependency_tree_nests_calc_field_dependencies():
     html_text = render(spec, "sample.twb")
 
     tree_section = html_text.split("<h2>依存関係ツリー（シート起点）</h2>")[1]
-    assert "class='dep-sheet'>シート1" in tree_section
+    assert "class='dep-sheet'><span class='tw-name'>シート1" in tree_section
     assert "class='dep-calc'>" in tree_section
     assert ">予実差</span>" in tree_section
-    assert "class='dep-field'>予算" in tree_section
+    assert "class='dep-field'><span class='tw-name'>予算" in tree_section
 
 
 def test_render_dependency_tree_shows_formula_as_tooltip_on_calc_field():
@@ -419,7 +419,7 @@ def test_render_dependency_tree_hides_shelfless_field_already_nested_under_calc_
     # 「時間外勤務(h)」は over 45 の依存先として一度だけ現れ（数式ツールチップにも1回出現）、
     # シート直下には重複表示されない
     assert tree_section.count("時間外勤務(h)") == 2
-    assert "class='dep-field'>氏名" in tree_section
+    assert "class='dep-field'><span class='tw-name'>氏名" in tree_section
 
 
 def test_render_dependency_tree_keeps_shelfless_field_when_it_also_has_its_own_shelf():
@@ -477,7 +477,7 @@ def test_render_dependency_tree_annotates_sheet_level_field_shelves():
 
     tree_section = html_text.split("<h2>依存関係ツリー（シート起点）</h2>")[1]
     assert "予実差</span><span class='dep-shelf'>（列）</span>" in tree_section
-    assert "class='dep-field'>地域<span class='dep-shelf'>（行・フィルター）</span>" in tree_section
+    assert "class='dep-field'><span class='tw-name'>地域</span><span class='dep-shelf'>（行・フィルター）</span>" in tree_section
     # 数式内の依存先（予算）は棚の概念がないため注記が付かない
     assert "予算<span class='dep-shelf'" not in tree_section
 
@@ -682,6 +682,29 @@ def test_render_produces_tabbed_document_with_search_scripts():
         assert html.escape(label) in html_text
         assert f"id='tw-panel-{key}'" in html_text
     assert "function twShowTab" in html_text
+    assert "function twHighlightText" in html_text
     assert "function twFilterFieldTables" in html_text
     assert "function twFilterTree" in html_text
     assert html_text.count(" hidden>") == len(MENU) - 1
+
+
+def test_render_wraps_searchable_names_in_tw_name_span_for_client_side_highlighting():
+    spec = WorkbookSpec(
+        calculated_fields=[
+            CalculatedField(name="[c1]", caption="計算1", formula="SUM([x])", is_lod=False, datasource="ds1")
+        ],
+        parameters=[Parameter(name="[p1]", caption="param1", datatype="integer", current_value="1")],
+        sets=[SetInfo(name="セット1", field="地域", description="上位 5 件", datasource="ds1")],
+        sheets=[Sheet(name="シート1", used_calculated_fields=["計算1"], used_fields=["地域"])],
+    )
+
+    html_text = render(spec, "sample.twb")
+
+    calc_section = html_text.split("<h2>計算フィールド</h2>")[1].split("</section>")[0]
+    assert "<span class='tw-name'>計算1</span>" in calc_section
+    param_section = html_text.split("<h2>パラメーター</h2>")[1].split("</section>")[0]
+    assert "<span class='tw-name'>param1</span>" in param_section
+    sets_section = html_text.split("<h2>セット</h2>")[1].split("</section>")[0]
+    assert "<span class='tw-name'>セット1</span>" in sets_section
+    tree_section = html_text.split("<h2>依存関係ツリー（シート起点）</h2>")[1]
+    assert "class='dep-sheet'><span class='tw-name'>シート1" in tree_section

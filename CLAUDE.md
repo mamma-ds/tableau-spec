@@ -51,4 +51,4 @@ pyinstaller TableauSpecWeb.spec --noconfirm
 - カスタムSQL抽出はrelation type="text" のみ対応
 - テーブル結合は2テーブルのpairwise joinを前提に表示（3テーブル以上のネストした結合は「(結合)」とだけ表示され、内訳までは展開しない）
 - セットの定義説明は簡略化しており、「上位N件」「メンバー指定」等の大まかな分類のみ。複雑な条件ベースのセットは「条件ベース」とだけ表示される
-- ダウンロードしたHTML単体（Streamlit非経由）の検索・絞り込みはクライアントサイドJSによる簡易実装で、行の表示/非表示のみ（Streamlit版のような`<mark>`ハイライトはしない）
+- ダウンロードしたHTML単体（Streamlit非経由）の検索・絞り込みはクライアントサイドJS（`.tw-name`要素を対象にした`<mark>`ハイライト）による実装。Streamlit版と見た目は同等だが、実装は別（Python側の`_highlight_if_match`/`_highlight_substring` vs JS側の`twHighlightText`）なので、検索対象カラムを変更する際は両方の修正が必要
