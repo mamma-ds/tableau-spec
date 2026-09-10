@@ -45,6 +45,7 @@ def _caption_or_bare_name(elem: ET.Element) -> str:
 class TableInfo:
     name: str
     table: str
+    columns: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -145,7 +146,7 @@ def analyze(root: ET.Element) -> WorkbookSpec:
             parameters.extend(_extract_parameters(ds))
             continue
         display_name = ds_display_names[raw_name]
-        datasources.append(_extract_datasource(ds, display_name))
+        datasources.append(_extract_datasource(ds, display_name, name_to_caption))
         calculated_fields.extend(_extract_calculated_fields(ds, display_name, name_to_caption))
         sets.extend(_extract_sets(ds, display_name, name_to_caption))
 
@@ -259,7 +260,28 @@ def _extract_join(relation: ET.Element) -> JoinInfo:
     )
 
 
-def _extract_datasource(datasource: ET.Element, display_name: str) -> DataSource:
+def _extract_table_columns(
+    connection: ET.Element, name_to_caption: dict[str, str]
+) -> dict[str, list[str]]:
+    """<metadata-records> の <metadata-record class='column'> から、
+    テーブル名(parent-name) → フィールド表示名一覧の対応表を作る。"""
+    columns_by_table: dict[str, list[str]] = {}
+    for record in connection.findall("./metadata-records/metadata-record[@class='column']"):
+        parent = record.findtext("parent-name", "")
+        local_name = record.findtext("local-name", "")
+        if not parent or not local_name:
+            continue
+        remote_name = record.findtext("remote-name", "") or _strip_brackets(local_name)
+        caption = name_to_caption.get(local_name, remote_name)
+        bucket = columns_by_table.setdefault(parent, [])
+        if caption not in bucket:
+            bucket.append(caption)
+    return columns_by_table
+
+
+def _extract_datasource(
+    datasource: ET.Element, display_name: str, name_to_caption: dict[str, str]
+) -> DataSource:
     connection = datasource.find("./connection")
     connection_class = connection.get("class", "") if connection is not None else ""
 
@@ -277,6 +299,13 @@ def _extract_datasource(datasource: ET.Element, display_name: str) -> DataSource
                 )
             elif rel_type == "join":
                 joins.append(_extract_join(relation))
+
+        columns_by_table = _extract_table_columns(connection, name_to_caption)
+        for t in tables:
+            # metadata-record の parent-name は relation の table 属性ではなく
+            # name 属性（を角括弧で囲んだ形）に一致することが多い（例: Excel接続）ため、
+            # 両方の形式で照合する。
+            t.columns = columns_by_table.get(f"[{t.name}]") or columns_by_table.get(t.table, [])
 
     all_field_captions: list[str] = []
     for col in datasource.findall("./column"):

@@ -79,6 +79,29 @@ def test_render_custom_sql_in_details():
     assert "SELECT * FROM foo" in html_text
 
 
+def test_render_datasources_lists_columns_per_table():
+    spec = WorkbookSpec(
+        datasources=[
+            DataSource(
+                name="ds1",
+                connection_class="federated",
+                tables=[
+                    TableInfo(name="注文", table="[注文$]", columns=["注文ID", "顧客名"]),
+                    TableInfo(name="在庫", table="[在庫$]", columns=[]),
+                ],
+            )
+        ],
+    )
+
+    html_text = render(spec, "sample.twb")
+
+    ds_section = html_text.split("<h2>データソース</h2>")[1].split("</section>")[0]
+    assert "<summary>[注文$]（2列）</summary>" in ds_section
+    assert "注文ID、顧客名" in ds_section
+    assert "<summary>[在庫$]（0列）</summary>" in ds_section
+    assert "（フィールド情報なし）" in ds_section
+
+
 def test_calculated_field_column_order_is_name_formula_datasource():
     spec = WorkbookSpec(
         calculated_fields=[

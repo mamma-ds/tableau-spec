@@ -57,6 +57,18 @@ _WORKBOOK_XML = """
             </expression>
           </clause>
         </relation>
+        <metadata-records>
+          <metadata-record class='column'>
+            <remote-name>顧客名</remote-name>
+            <local-name>[顧客名]</local-name>
+            <parent-name>[注文]</parent-name>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>未使用列</remote-name>
+            <local-name>[未使用列]</local-name>
+            <parent-name>[顧客]</parent-name>
+          </metadata-record>
+        </metadata-records>
       </connection>
       <column caption='顧客名' name='[顧客名]' role='dimension' type='nominal' />
       <column caption='未使用列' name='[未使用列]' role='dimension' type='nominal' />
@@ -319,6 +331,19 @@ def test_datasource_all_field_captions_includes_all_real_columns():
 
     ds = next(d for d in spec.datasources if d.name == "結合データ")
     assert set(ds.all_field_captions) == {"顧客名", "未使用列"}
+
+
+def test_table_columns_extracted_from_metadata_records():
+    spec = _analyze_sample()
+
+    ds = next(d for d in spec.datasources if d.name == "結合データ")
+    orders_table = next(t for t in ds.tables if t.name == "注文")
+    customer_table = next(t for t in ds.tables if t.name == "顧客")
+
+    # metadata-record の parent-name は relation の table 属性（[dbo].[注文]）ではなく
+    # name 属性を角括弧で囲んだ形（[注文]）に一致するため、name 側で照合する
+    assert orders_table.columns == ["顧客名"]
+    assert customer_table.columns == ["未使用列"]
 
 
 def test_set_extracted_with_field_and_description():

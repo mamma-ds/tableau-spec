@@ -52,3 +52,4 @@ pyinstaller TableauSpecWeb.spec --noconfirm
 - テーブル結合は2テーブルのpairwise joinを前提に表示（3テーブル以上のネストした結合は「(結合)」とだけ表示され、内訳までは展開しない）
 - セットの定義説明は簡略化しており、「上位N件」「メンバー指定」等の大まかな分類のみ。複雑な条件ベースのセットは「条件ベース」とだけ表示される
 - ダウンロードしたHTML単体（Streamlit非経由）の検索・絞り込みはクライアントサイドJS（`.tw-name`要素を対象にした`<mark>`ハイライト）による実装。Streamlit版と見た目は同等だが、実装は別（Python側の`_highlight_if_match`/`_highlight_substring` vs JS側の`twHighlightText`）なので、検索対象カラムを変更する際は両方の修正が必要
+- テーブル毎のフィールド一覧は`<connection><metadata-records><metadata-record class='column'>`から抽出しており、この要素が無いデータソース（またはTableau Cloud/Serverの「リレーションシップ」データモデルなど未検証の構造）では列名が空になる場合がある。`parent-name`は`relation`の`table`属性ではなく`name`属性（を角括弧で囲んだ形）に一致することがあるため、両方で照合している

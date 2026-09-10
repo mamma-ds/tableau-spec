@@ -354,10 +354,20 @@ def _render_overview(spec: WorkbookSpec, source_name: str) -> str:
     )
 
 
+def _render_table_columns(table_name: str, columns: list[str]) -> str:
+    columns_html = "、".join(html.escape(c) for c in columns) if columns else "（フィールド情報なし）"
+    return (
+        f"<details><summary>{html.escape(table_name)}（{len(columns)}列）</summary>"
+        f"<p>{columns_html}</p></details>"
+    )
+
+
 def _render_datasources(spec: WorkbookSpec) -> str:
     rows = []
     for ds in spec.datasources:
-        tables = "、".join(html.escape(t.table or t.name) for t in ds.tables) or "-"
+        tables = (
+            "".join(_render_table_columns(t.table or t.name, t.columns) for t in ds.tables) or "-"
+        )
         sql_html = "-"
         if ds.custom_sql:
             sql_blocks = "".join(
