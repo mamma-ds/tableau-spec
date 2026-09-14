@@ -300,6 +300,16 @@ def test_sheet_used_fields_and_calculated_fields():
     assert sheet_a.used_calculated_fields == ["利益率"]
 
 
+def test_sheet_datasources_lists_display_names_of_all_referenced_datasources():
+    spec = _analyze_sample()
+
+    sheet_a = next(s for s in spec.sheets if s.name == "シートA")
+    assert sheet_a.datasources == ["売上データ", "結合データ"]
+
+    sheet_b = next(s for s in spec.sheets if s.name == "シートB")
+    assert sheet_b.datasources == []
+
+
 def test_sheet_field_shelves_extracted_from_rows_cols_and_encodings():
     spec = _analyze_sample()
 

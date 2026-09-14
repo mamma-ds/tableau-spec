@@ -596,6 +596,7 @@ def _render_unused_fields(spec: WorkbookSpec, search: str = "") -> str:
 def _render_sheets(spec: WorkbookSpec) -> str:
     rows = []
     for s in spec.sheets:
+        datasources = "、".join(html.escape(d) for d in s.datasources) if s.datasources else "-"
         filters = "、".join(html.escape(f.column) for f in s.filters) if s.filters else "-"
         used_fields = (
             "、".join(f"{html.escape(f)}{_shelf_html(f, s.field_shelves)}" for f in s.used_fields)
@@ -612,13 +613,15 @@ def _render_sheets(spec: WorkbookSpec) -> str:
         rows.append(
             "<tr>"
             f"<td>{_color_swatch(s.color)}{html.escape(s.name)}</td>"
+            f"<td>{datasources}</td>"
             f"<td>{filters}</td>"
             f"<td>{used_fields}</td>"
             f"<td>{used_calc_fields}</td>"
             "</tr>"
         )
     table_html = (
-        "<table><tr><th>シート名</th><th>フィルター</th><th>使用フィールド</th><th>使用計算フィールド</th></tr>"
+        "<table><tr><th>シート名</th><th>使用データソース</th><th>フィルター</th>"
+        "<th>使用フィールド</th><th>使用計算フィールド</th></tr>"
         + "".join(rows)
         + "</table>"
         if rows

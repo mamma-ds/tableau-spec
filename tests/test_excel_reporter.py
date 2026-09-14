@@ -95,8 +95,25 @@ def test_render_excel_sheets_sheet_annotates_field_shelves():
     ws = wb["シート一覧"]
     row = list(ws.iter_rows(min_row=2, values_only=True))[0]
 
-    assert row[2] == "地域（行）"
-    assert row[3] == "利益率（色・フィルター）"
+    assert row[3] == "地域（行）"
+    assert row[4] == "利益率（色・フィルター）"
+
+
+def test_render_excel_sheets_sheet_shows_used_datasources():
+    spec = WorkbookSpec(
+        sheets=[
+            Sheet(name="シート1", datasources=["売上データ", "結合データ"]),
+            Sheet(name="シート2"),
+        ],
+    )
+
+    wb = _load(render_excel(spec, "sample.twb"))
+    ws = wb["シート一覧"]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    assert ws["B1"].value == "使用データソース"
+    assert rows[0][1] == "売上データ、結合データ"
+    assert rows[1][1] == "-"
 
 
 def test_render_excel_joins_and_unused_fields_sheets():

@@ -106,6 +106,7 @@ class Sheet:
     used_fields: list[str] = field(default_factory=list)
     used_calculated_fields: list[str] = field(default_factory=list)
     field_shelves: dict[str, list[str]] = field(default_factory=dict)
+    datasources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -515,7 +516,12 @@ def _extract_sheet(
 
     used_fields: list[str] = []
     used_calculated_fields: list[str] = []
+    datasources: list[str] = []
     for dependencies in worksheet.iter("datasource-dependencies"):
+        raw_ds_name = dependencies.get("datasource", "")
+        ds_display_name = ds_display_names.get(raw_ds_name, raw_ds_name)
+        if ds_display_name and ds_display_name not in datasources:
+            datasources.append(ds_display_name)
         for col in dependencies.findall("./column"):
             caption = _caption_or_bare_name(col)
             calc = col.find("./calculation")
@@ -535,6 +541,7 @@ def _extract_sheet(
         used_fields=used_fields,
         used_calculated_fields=used_calculated_fields,
         field_shelves=field_shelves,
+        datasources=datasources,
     )
 
 

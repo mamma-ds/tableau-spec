@@ -164,6 +164,22 @@ def test_sheet_table_includes_used_fields_and_calculated_fields():
     assert "利益率" in html_text
 
 
+def test_sheet_table_shows_used_datasources():
+    spec = WorkbookSpec(
+        sheets=[
+            Sheet(name="シート1", datasources=["売上データ", "結合データ"]),
+            Sheet(name="シート2"),
+        ],
+    )
+
+    html_text = render(spec, "sample.twb")
+
+    sheets_section = html_text.split("<h2>シート一覧</h2>")[1].split("</section>")[0]
+    assert "<th>使用データソース</th>" in sheets_section
+    assert "売上データ、結合データ" in sheets_section
+    assert ">-<" in sheets_section
+
+
 def test_sheet_table_annotates_used_fields_with_shelves():
     spec = WorkbookSpec(
         sheets=[

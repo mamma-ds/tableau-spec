@@ -193,18 +193,19 @@ def _write_dashboards_sheet(wb: Workbook, spec: WorkbookSpec) -> None:
 def _write_sheets_sheet(wb: Workbook, spec: WorkbookSpec) -> None:
     rows = []
     for s in spec.sheets:
+        datasources = "、".join(s.datasources) or "-"
         filters = "、".join(f.column for f in s.filters) or "-"
         used_fields = "、".join(_field_with_shelf(f, s.field_shelves) for f in s.used_fields) or "-"
         used_calc_fields = (
             "、".join(_field_with_shelf(f, s.field_shelves) for f in s.used_calculated_fields) or "-"
         )
-        rows.append([s.name, filters, used_fields, used_calc_fields])
+        rows.append([s.name, datasources, filters, used_fields, used_calc_fields])
     _write_sheet(
         wb,
         "シート一覧",
-        ["シート名", "フィルター", "使用フィールド", "使用計算フィールド"],
+        ["シート名", "使用データソース", "フィルター", "使用フィールド", "使用計算フィールド"],
         rows,
-        wrap_columns={3, 4},
+        wrap_columns={4, 5},
     )
 
 
