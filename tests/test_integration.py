@@ -1,8 +1,11 @@
+import io
 from pathlib import Path
 
 import pytest
+from openpyxl import load_workbook
 
 from tableau_spec.analyzer import analyze
+from tableau_spec.excel_reporter import render_excel
 from tableau_spec.parser import parse
 from tableau_spec.reporter import render
 
@@ -20,6 +23,16 @@ def test_pipeline_on_real_sample_twbx(twbx_path):
     assert len(spec.sheets) > 0
     assert "<html" in html_text
     assert twbx_path.name in html_text
+
+
+@pytest.mark.parametrize("twbx_path", _SAMPLE_FILES, ids=[p.name for p in _SAMPLE_FILES])
+def test_excel_pipeline_on_real_sample_twbx(twbx_path):
+    spec = analyze(parse(twbx_path))
+    excel_bytes = render_excel(spec, twbx_path.name)
+
+    wb = load_workbook(io.BytesIO(excel_bytes))
+    assert "シート一覧" in wb.sheetnames
+    assert wb["シート一覧"].max_row == len(spec.sheets) + 1
 
 
 def test_sample_directory_has_files():

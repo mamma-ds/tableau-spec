@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 from tableau_spec.analyzer import WorkbookSpec, analyze
+from tableau_spec.excel_reporter import render_excel
 from tableau_spec.parser import ParseError, parse
 from tableau_spec.reporter import MENU, embed_style, render, render_groups
 
@@ -118,12 +119,21 @@ def _run_app() -> None:
         st.error(f"エラー: {e}")
         return
 
-    st.download_button(
-        "HTMLをダウンロード",
-        data=render(spec, uploaded.name),
-        file_name=Path(uploaded.name).stem + ".html",
-        mime="text/html",
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            "HTMLをダウンロード",
+            data=render(spec, uploaded.name),
+            file_name=Path(uploaded.name).stem + ".html",
+            mime="text/html",
+        )
+    with col2:
+        st.download_button(
+            "Excelをダウンロード",
+            data=render_excel(spec, uploaded.name),
+            file_name=Path(uploaded.name).stem + ".xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
     fragment = render_groups(
         spec, uploaded.name, dependency_sheet_search, dependency_field_search, fields_search

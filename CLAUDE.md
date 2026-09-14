@@ -4,7 +4,7 @@
 Tableau の .twb / .twbx ファイルを解析して HTML 仕様書を生成する CLI ツール。
 
 ## アーキテクチャ
-責務分離のため5つのモジュールに分割している。
+責務分離のため6つのモジュールに分割している。
 変更時は対応するモジュールのみ修正し、他に影響しないか確認すること。
 
 | モジュール | ファイル | 責務 |
@@ -12,10 +12,17 @@ Tableau の .twb / .twbx ファイルを解析して HTML 仕様書を生成す�
 | パーサー | tableau_spec/parser.py | ファイルI/O・XML読み込みのみ |
 | 解析 | tableau_spec/analyzer.py | XPath・データ抽出のみ |
 | レポート | tableau_spec/reporter.py | HTML生成のみ |
+| Excelレポート | tableau_spec/excel_reporter.py | Excel(.xlsx)生成のみ |
 | CLI | tableau_spec/cli.py | 引数処理・終了コードのみ |
 | Web UI | tableau_spec/webapp.py | Streamlit UI・アップロードファイルの一時保存のみ |
 
-webapp.py は parser/analyzer/reporter をそのまま呼び出すだけで、XML解析やHTML生成のロジックは持たない。
+webapp.py は parser/analyzer/reporter/excel_reporter をそのまま呼び出すだけで、
+XML解析やHTML/Excel生成のロジックは持たない。
+
+reporter.py と excel_reporter.py はどちらも WorkbookSpec から独立して自分の出力形式を
+組み立てるだけで、互いには依存しない（usage map計算などの小さなロジックは意図的に
+それぞれで持つ。詳細は各ファイル冒頭のdocstring参照）。依存関係ツリーはツリー構造で
+表形式に馴染まないため、Excel出力の対象外。
 
 tableau_spec/desktop_launcher.py はPyInstallerでexe化する際の起動エントリポイントのみを担当する
 （`streamlit run` を内部的に呼び出すラッパー）。ビジネスロジックは持たない。
@@ -25,6 +32,7 @@ tableau_spec/desktop_launcher.py はPyInstallerでexe化する際の起動エン
   - parser.py にビジネスロジックを書かない
   - analyzer.py にファイルI/Oを書かない
   - reporter.py にXMLパースを書かない
+  - excel_reporter.py にXMLパースを書かない
 - 変更後は必ず `python -m pytest tests/ -v` を実行して全テストが通ることを確認する
 - 新機能追加時は対応するテストも追加する
 
