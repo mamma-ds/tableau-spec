@@ -155,6 +155,9 @@ _WORKBOOK_XML = """
           <datasource-dependencies datasource='売上データ'>
             <column caption='担当者' name='[担当者]' role='dimension' type='nominal' />
           </datasource-dependencies>
+          <datasource-dependencies datasource='Parameters'>
+            <column caption='しきい値' name='[Parameter 1]' />
+          </datasource-dependencies>
         </view>
       </table>
     </worksheet>
@@ -308,6 +311,14 @@ def test_sheet_datasources_lists_display_names_of_all_referenced_datasources():
 
     sheet_b = next(s for s in spec.sheets if s.name == "シートB")
     assert sheet_b.datasources == []
+
+
+def test_sheet_datasources_excludes_parameters_pseudo_datasource():
+    spec = _analyze_sample()
+
+    sheet_c = next(s for s in spec.sheets if s.name == "シートC")
+    assert sheet_c.datasources == ["売上データ"]
+    assert "Parameters" not in sheet_c.datasources
 
 
 def test_sheet_field_shelves_extracted_from_rows_cols_and_encodings():

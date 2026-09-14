@@ -520,7 +520,8 @@ def _extract_sheet(
     for dependencies in worksheet.iter("datasource-dependencies"):
         raw_ds_name = dependencies.get("datasource", "")
         ds_display_name = ds_display_names.get(raw_ds_name, raw_ds_name)
-        if ds_display_name and ds_display_name not in datasources:
+        # "Parameters" は実データソースではなく疑似データソースのため一覧に含めない
+        if raw_ds_name != "Parameters" and ds_display_name and ds_display_name not in datasources:
             datasources.append(ds_display_name)
         for col in dependencies.findall("./column"):
             caption = _caption_or_bare_name(col)
