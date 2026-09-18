@@ -76,8 +76,8 @@ def _run_app() -> None:
     st.markdown(
         "<style>"
         "[data-testid='StyledFullScreenButton'] { display: none; }"
-        "header[data-testid='stHeader'] { display: none; }"
-        "#MainMenu { visibility: hidden; }"
+        "[data-testid='stAppDeployButton'] { display: none; }"
+        "[data-testid='stMainMenu'] { display: none; }"
         "</style>",
         unsafe_allow_html=True,
     )
