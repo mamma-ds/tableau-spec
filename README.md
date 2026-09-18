@@ -65,9 +65,13 @@ wheel一式（`tableau-spec-offline-pyXXX.zip`）をダウンロードできま�
 3. 展開したフォルダで以下を実行
 
 ```bash
-pip install --no-index --find-links . "tableau_spec[web]"
+pip install --no-index --find-links . --upgrade "tableau_spec[web]"
 tableau-spec-web
 ```
+
+`--upgrade` を付けないと、既に別バージョンがインストール済みの場合に更新されず古いまま
+残ってしまうので注意してください。`tableau-spec-web` を起動した際にサイドバーへ表示される
+バージョン番号（例: `v0.1.4`）で、正しく更新されたか確認できます。
 
 中身は標準的な `.whl`（Pythonパッケージ）ファイルのみなので、自作の実行ファイルを配布する場合と比べて
 セキュリティソフトに検知されにくくなっています。
@@ -93,13 +97,14 @@ pyinstaller TableauSpecWeb.spec --noconfirm
 
 ## アーキテクチャ
 
-責務分離のため5つのモジュールに分割しています。
+責務分離のため6つのモジュールに分割しています。
 
 | モジュール | ファイル | 責務 |
 |---|---|---|
 | パーサー | `tableau_spec/parser.py` | ファイルI/O・XML読み込みのみ |
 | 解析 | `tableau_spec/analyzer.py` | XPath・データ抽出のみ |
 | レポート | `tableau_spec/reporter.py` | HTML生成のみ |
+| Excelレポート | `tableau_spec/excel_reporter.py` | Excel(.xlsx)生成のみ |
 | CLI | `tableau_spec/cli.py` | 引数処理・終了コードのみ |
 | Web UI | `tableau_spec/webapp.py` | Streamlit UI・アップロードファイルの一時保存のみ |
 
