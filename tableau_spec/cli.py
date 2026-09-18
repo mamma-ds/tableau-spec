@@ -7,6 +7,7 @@ import sys
 import webbrowser
 from pathlib import Path
 
+from tableau_spec import __version__
 from tableau_spec.analyzer import analyze
 from tableau_spec.parser import ParseError, parse
 from tableau_spec.reporter import render
@@ -17,6 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="tableau-spec",
         description="Tableau の .twb / .twbx ファイルを解析して HTML 仕様書を生成する",
     )
+    p.add_argument("--version", action="version", version=f"tableau-spec {__version__}")
     p.add_argument("input", type=Path, help="入力する .twb または .twbx ファイル")
     p.add_argument(
         "-o", "--output", type=Path, default=Path("output.html"), help="出力するHTMLファイルのパス"

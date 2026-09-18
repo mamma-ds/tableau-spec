@@ -8,6 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tableau_spec import __version__
 from tableau_spec.analyzer import WorkbookSpec, analyze
 from tableau_spec.excel_reporter import render_excel
 from tableau_spec.parser import ParseError, parse
@@ -84,6 +85,7 @@ def _run_app() -> None:
 
     with st.sidebar:
         st.title("Tableau仕様書生成ツール")
+        st.caption(f"v{__version__}")
         uploaded = st.file_uploader(".twb / .twbx をドラッグ＆ドロップ", type=["twb", "twbx"])
 
         selected_key = MENU[0][0]
